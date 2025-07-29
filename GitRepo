@@ -1,0 +1,4 @@
+/frontend
+/backend
+/infra (Docker, CI/CD config, dsb.)
+README.md
