@@ -4,20 +4,19 @@
 # Skrip otomatis untuk men-deploy Docker image ke Google Compute Engine (GCE)
 # ==============================================================================
 
-# Variabel konfigurasi - ganti dengan nilai yang sesuai
+# Variabel konfigurasi
 # ------------------------------------------------------------------------------
 # IP eksternal dari instance Compute Engine Anda.
-GCE_IP="<IP-PUBLIK-GCE>"
+GCE_IP="34.101.235.208"
 
-# Nama pengguna (user) di GCE Anda. Defaultnya adalah nama akun Google Anda.
-GCE_USER="<NAMA-USER-GCE>"
+# Nama pengguna (user) di GCE Anda.
+GCE_USER="khali"
 
-# Lokasi repositori di Google Artifact Registry.
-# Format: <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO_NAME>/<IMAGE_NAME>:<TAG>
-DOCKER_IMAGE_NAME="asia-southeast2-docker.pkg.dev/<PROJECT_ID>/<REPO_NAME>/<IMAGE_NAME>:latest"
+# Lokasi repositori di Google Artifact Registry dan nama image.
+DOCKER_IMAGE_NAME="asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest"
 
 # Nama container Docker yang akan dijalankan di GCE.
-CONTAINER_NAME="my-web-app"
+CONTAINER_NAME="fullstak-app"
 # ------------------------------------------------------------------------------
 
 # Fungsi untuk menampilkan pesan error dan keluar
@@ -25,11 +24,6 @@ handle_error() {
   echo "Error: $1" >&2
   exit 1
 }
-
-# Periksa apakah semua variabel telah diisi
-if [ -z "$34.101.235.208" ] || [ -z "$khali" ] || [ -z "$asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo" ]; then
-  handle_error "Harap lengkapi semua variabel konfigurasi di skrip."
-fi
 
 echo "Memulai proses deployment ke GCE..."
 echo "IP GCE: $GCE_IP"
