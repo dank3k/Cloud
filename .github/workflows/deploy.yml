@@ -1,55 +1,53 @@
-name: CI/CD Pipeline
+# Nama workflow ini yang akan muncul di tab "Actions" di GitHub
+name: Deploy to Google Compute Engine
 
+# Tentukan pemicu (trigger) untuk workflow ini
 on:
   push:
     branches:
-      - main # This workflow runs on pushes to the 'main' branch
+      - main  # Workflow akan berjalan setiap kali ada push ke branch 'main'
 
+# Definisi job yang akan dijalankan
 jobs:
   build-and-deploy:
+    # Tentukan environment untuk job
     runs-on: ubuntu-latest
 
+    # Langkah-langkah (steps) yang akan dijalankan
     steps:
-      - name: Checkout code
+      - name: Checkout Kode dari Repository
         uses: actions/checkout@v2
 
-      - name: Set up Google Cloud SDK
+      - name: Siapkan Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: fullstak-project
           service_account_key: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Build and Push Docker image to Artifact Registry
+      - name: Build dan Push Docker Image ke Artifact Registry
         run: |
-          # Configure Docker for Artifact Registry
           gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
           
-          # Build and tag the Docker image. Assumes your React app is in a 'client' folder.
-          docker build -t asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest ./client
+          # Perintah build telah dikoreksi. Tanda titik '.' menunjukkan konteks build
+          # adalah root repositori, di mana folder 'public' dan 'src' berada.
+          docker build -t asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest .
           
-          # Push the image to Artifact Registry
-          docker push asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest
+          docker push asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest
 
-      - name: Deploy to Compute Engine
+      - name: Deploy ke Google Compute Engine
         run: |
-          # Set up the SSH private key
           mkdir -p ~/.ssh
           echo "${{ secrets.GCE_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.GCE_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H 34.101.235.208 >> ~/.ssh/known_hosts
 
-          # Execute the deployment script on the VM via SSH
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no khali@${{ secrets.GCE_IP }} "
-            # Log in to Artifact Registry on the VM
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no khali@34.101.235.208 "
             gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
             
-            # Pull the latest Docker image
-            docker pull asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest
+            docker pull asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest
             
-            # Stop and remove the old container
             docker stop fullstak-app || true
             docker rm fullstak-app || true
             
-            # Run a new container
-            docker run -d --name fullstak-app -p 80:80 asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest
+            docker run -d --name fullstak-app -p 80:80 asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest
           "
