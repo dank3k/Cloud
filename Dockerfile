@@ -1,39 +1,39 @@
-# ====================================================================
-# Tahap 1: Build Aplikasi React
-# Gunakan base image Node.js yang stabil dan sesuai untuk React 17
-# ====================================================================
-FROM node:16-alpine AS builder
+ Dockerfile untuk aplikasi React 17.0.2 menggunakan multi-stage build
 
-# Set direktori kerja di dalam container
+# --- Stage 1: Build Aplikasi React ---
+# Menggunakan Node.js versi 17 yang ringan (alpine) untuk membangun (build) aplikasi.
+FROM node:17-alpine AS builder
+
+# Menentukan direktori kerja di dalam container.
 WORKDIR /app
 
-# Salin file package.json dan package-lock.json untuk menginstal dependensi
-# Ini mengoptimalkan cache Docker, jadi npm install hanya berjalan jika file ini berubah
-COPY package.json ./
-COPY package-lock.json ./
+# Menyalin file package.json dan package-lock.json untuk menginstal dependensi.
+# Langkah ini dioptimalkan untuk memanfaatkan Docker cache.
+COPY package*.json ./
 
-# Jalankan npm install
-# Jika ada error di sini, kemungkinan besar masalahnya ada di package.json Anda
+# Menginstal semua dependensi proyek.
 RUN npm install
 
-# Salin semua file proyek ke direktori kerja
+# Menyalin seluruh kode sumber aplikasi ke dalam direktori kerja.
 COPY . .
 
-# Jalankan perintah build untuk menghasilkan aset statis
+# Membangun (build) aplikasi React untuk mode produksi.
+# Hasil build akan disimpan di direktori `build`.
 RUN npm run build
 
-# ====================================================================
-# Tahap 2: Jalankan Nginx untuk melayani aplikasi
-# Gunakan base image Nginx yang ringan untuk produksi
-# ====================================================================
+# --- Stage 2: Menjalankan (serve) Aplikasi Menggunakan Nginx ---
+# Menggunakan Nginx yang ringan (alpine) untuk menyajikan file statis dari hasil build.
 FROM nginx:alpine
 
-# Salin file-file build dari tahap 'builder' ke direktori Nginx
-# /usr/share/nginx/html adalah direktori default Nginx untuk file web
+# Menyalin file konfigurasi Nginx kustom.
+# Ini penting untuk menangani routing Single Page Application (SPA).
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Menyalin hasil build aplikasi dari stage 'builder' ke direktori Nginx.
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Ekspos port 80 untuk lalu lintas HTTP
+# Mengarahkan Nginx untuk mendengarkan di port 80 secara default.
 EXPOSE 80
 
-# Jalankan Nginx saat container dimulai
+# Perintah default untuk memulai Nginx.
 CMD ["nginx", "-g", "daemon off;"]
