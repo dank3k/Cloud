@@ -1,53 +1,58 @@
-# Nama workflow ini yang akan muncul di tab "Actions" di GitHub
-name: Deploy to Google Compute Engine
+name: Deploy to Cloud Run
 
-# Tentukan pemicu (trigger) untuk workflow ini
 on:
   push:
     branches:
-      - main  # Workflow akan berjalan setiap kali ada push ke branch 'main'
+      - main
 
-# Definisi job yang akan dijalankan
+env:
+  PROJECT_ID: fullstak-project
+  AR_REPO_LOCATION: asia-southeast2
+  AR_REPO_NAME: fullstak-repo
+  IMAGE_NAME: frontend
+  CLOUD_RUN_SERVICE: fullstak-service
+  CLOUD_RUN_REGION: asia-southeast2
+  GCP_SA_EMAIL: github-actions-sa@fullstak-project.iam.gserviceaccount.com
+  INSTANCE_IP: 35.219.48.23
+
 jobs:
   build-and-deploy:
-    # Tentukan environment untuk job
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
-    # Langkah-langkah (steps) yang akan dijalankan
     steps:
-      - name: Checkout Kode dari Repository
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Siapkan Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+      - name: 'Authenticate to Google Cloud'
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
         with:
-          project_id: fullstak-project
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Build dan Push Docker Image ke Artifact Registry
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${AR_REPO_LOCATION}-docker.pkg.dev
+
+      - name: Build and Push Docker image
         run: |
-          gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
-          
-          # Perintah build telah dikoreksi. Tanda titik '.' menunjukkan konteks build
-          # adalah root repositori, di mana folder 'public' dan 'src' berada.
-          docker build -t asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest .
-          
-          docker push asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest
+          docker build -t ${AR_REPO_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}:${{ github.sha }} .
+          docker push ${AR_REPO_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}:${{ github.sha }}
 
-      - name: Deploy ke Google Compute Engine
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.GCE_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 34.101.235.208 >> ~/.ssh/known_hosts
+      - name: Deploy to Cloud Run
+        run: gcloud run deploy ${CLOUD_RUN_SERVICE} \
+          --image=${AR_REPO_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}:${{ github.sha }} \
+          --region=${CLOUD_RUN_REGION} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --ingress=all \
+          --update-env-vars=GCP_INSTANCE_IP=${INSTANCE_IP}
 
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no khali@34.101.235.208 "
-            gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
-            
-            docker pull asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest
-            
-            docker stop fullstak-app || true
-            docker rm fullstak-app || true
-            
-            docker run -d --name fullstak-app -p 80:80 asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest
-          "
+      - name: Print service URL
+        run: gcloud run services describe ${CLOUD_RUN_SERVICE} --region=${CLOUD_RUN_REGION} --format='value(status.url)'
