@@ -1,7 +1,6 @@
- Dockerfile untuk aplikasi React 17.0.2 menggunakan multi-stage build
+# Dockerfile untuk aplikasi React 17.0.2 menggunakan multi-stage build
 
 # --- Stage 1: Build Aplikasi React ---
-# Menggunakan Node.js versi 17 yang ringan (alpine) untuk membangun (build) aplikasi.
 FROM node:17-alpine AS builder
 
 # Menentukan direktori kerja di dalam container.
