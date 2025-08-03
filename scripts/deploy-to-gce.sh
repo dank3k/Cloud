@@ -7,7 +7,7 @@
 # Variabel konfigurasi
 # ------------------------------------------------------------------------------
 # IP eksternal dari instance Compute Engine Anda.
-GCE_IP="34.101.235.208"
+GCE_IP="35.219.48.23"
 
 # Nama pengguna (user) di GCE Anda.
 GCE_USER="khali"

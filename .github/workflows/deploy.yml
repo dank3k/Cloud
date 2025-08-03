@@ -3,14 +3,14 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main # Jalankan workflow setiap kali ada push ke branch 'main'
+      - main # This workflow runs on pushes to the 'main' branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout kode
+      - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Set up Google Cloud SDK
@@ -21,36 +21,35 @@ jobs:
 
       - name: Build and Push Docker image to Artifact Registry
         run: |
-          # Konfigurasi Docker untuk Artifact Registry
+          # Configure Docker for Artifact Registry
           gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
           
-          # Build dan beri tag pada Docker image
+          # Build and tag the Docker image. Assumes your React app is in a 'client' folder.
           docker build -t asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest ./client
           
-          # Unggah image ke Artifact Registry
+          # Push the image to Artifact Registry
           docker push asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest
 
-      - name: Set up SSH key for GCE
+      - name: Deploy to Compute Engine
         run: |
+          # Set up the SSH private key
           mkdir -p ~/.ssh
           echo "${{ secrets.GCE_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.GCE_IP }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to Compute Engine
-        run: |
-          # Jalankan skrip deploy di VM
+          # Execute the deployment script on the VM via SSH
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no khali@${{ secrets.GCE_IP }} "
-            # Login ke Artifact Registry di VM
+            # Log in to Artifact Registry on the VM
             gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
             
-            # Pull image terbaru
+            # Pull the latest Docker image
             docker pull asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest
             
-            # Hentikan dan hapus container lama
+            # Stop and remove the old container
             docker stop fullstak-app || true
             docker rm fullstak-app || true
             
-            # Jalankan container baru
+            # Run a new container
             docker run -d --name fullstak-app -p 80:80 asia-southeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/fullstak-repo/cloud-app:latest
           "
