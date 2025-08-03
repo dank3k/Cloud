@@ -53,7 +53,7 @@ jobs:
             --platform=managed \
             --allow-unauthenticated \
             --ingress=all \
-            --update-env-vars=GCP_INSTANCE_IP=${INSTANCE_IP}
+            --update-env-vars=PORT=80,GCP_INSTANCE_IP=${INSTANCE_IP}
 
       - name: Print service URL
         run: gcloud run services describe ${CLOUD_RUN_SERVICE} --region=${CLOUD_RUN_REGION} --format='value(status.url)'
