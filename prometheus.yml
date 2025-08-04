@@ -1,0 +1,11 @@
+# prometheus.yml
+global:
+  # Atur interval scraping global ke 15 detik
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Job untuk memantau Prometheus itu sendiri
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
