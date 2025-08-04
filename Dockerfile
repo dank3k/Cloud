@@ -56,6 +56,14 @@ COPY --from=builder /app/build /usr/share/nginx/html
 EXPOSE 80
 EXPOSE 9113
 
+
+# Menginstal Grafana secara manual
+RUN apk add --no-cache bash libc6-compat \
+    && wget https://dl.grafana.com/oss/release/grafana-10.2.3.linux-amd64.tar.gz \
+    && tar -zxvf grafana-10.2.3.linux-amd64.tar.gz \
+    && mv grafana-10.2.3 /opt/grafana \
+    && rm grafana-10.2.3.linux-amd64.tar.gz
+
 # Perintah untuk menjalankan skrip yang memulai Nginx dan Exporter.
 # Skrip ini memastikan kedua layanan berjalan di satu container.
 CMD ["/run.sh"]
