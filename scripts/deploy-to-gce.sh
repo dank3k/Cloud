@@ -1,53 +1,65 @@
 #!/bin/bash
 
 # ==============================================================================
-# Skrip otomatis untuk men-deploy Docker image ke Google Compute Engine (GCE)
+# Automatic script to deploy a Docker image to a Google Compute Engine (GCE) instance.
 # ==============================================================================
 
-# Variabel konfigurasi
-# ------------------------------------------------------------------------------
-# IP eksternal dari instance Compute Engine Anda.
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+# --- Configuration Variables ---
+# The external IP of your Compute Engine instance.
 GCE_IP="35.219.48.23"
 
-# Nama pengguna (user) di GCE Anda.
+# The user on your GCE instance.
 GCE_USER="khali"
 
-# Lokasi repositori di Google Artifact Registry dan nama image.
+# The full name of the Docker image to be deployed from Artifact Registry.
 DOCKER_IMAGE_NAME="asia-southeast2-docker.pkg.dev/fullstak-project/fullstak-repo/cloud-app:latest"
 
-# Nama container Docker yang akan dijalankan di GCE.
+# The name of the Docker container to be run on GCE.
 CONTAINER_NAME="fullstak-app"
-# ------------------------------------------------------------------------------
 
-# Fungsi untuk menampilkan pesan error dan keluar
+# --- Functions ---
+# Function to handle errors and exit.
 handle_error() {
-  echo "Error: $1" >&2
+  echo "ERROR: $1" >&2
   exit 1
 }
 
-echo "Memulai proses deployment ke GCE..."
-echo "IP GCE: $GCE_IP"
-echo "User GCE: $GCE_USER"
+# --- Main Script ---
+echo "Starting deployment process to GCE..."
+echo "GCE IP: $GCE_IP"
+echo "GCE User: $GCE_USER"
 echo "Docker Image: $DOCKER_IMAGE_NAME"
 
-# Menjalankan perintah SSH untuk deployment di GCE
-ssh -o StrictHostKeyChecking=no "$GCE_USER"@"$GCE_IP" "
-  set -e
+# Check if required variables are set.
+if [ -z "$GCE_IP" ] || [ -z "$GCE_USER" ] || [ -z "$DOCKER_IMAGE_NAME" ]; then
+  handle_error "One or more required variables (GCE_IP, GCE_USER, DOCKER_IMAGE_NAME) are not set."
+fi
 
-  echo '>>> Mengotentikasi ke Google Artifact Registry...'
+# Connect to the GCE instance via SSH and run deployment commands.
+ssh -o StrictHostKeyChecking=no "$GCE_USER"@"$GCE_IP" << EOF
+  echo '>>> Authenticating to Google Artifact Registry...'
   gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
 
-  echo '>>> Menarik (pull) image Docker terbaru...'
+  echo '>>> Pulling the latest Docker image...'
   docker pull $DOCKER_IMAGE_NAME
 
-  echo '>>> Menghentikan dan menghapus container lama (jika ada)...'
+  echo '>>> Stopping and removing the old container (if it exists)...'
   docker stop $CONTAINER_NAME || true
   docker rm $CONTAINER_NAME || true
 
-  echo '>>> Menjalankan container baru...'
+  echo '>>> Starting the new container...'
   docker run -d --name $CONTAINER_NAME -p 80:80 $DOCKER_IMAGE_NAME
 
-  echo 'Deployment berhasil!'
-" || handle_error "Gagal terhubung atau menjalankan perintah SSH."
+  echo '>>> Verifying container status...'
+  if docker ps -f "name=$CONTAINER_NAME" --format '{{.Status}}' | grep -q 'Up'; then
+    echo 'Deployment successful! Container is running.'
+  else
+    echo 'Deployment failed! Container did not start.'
+    exit 1
+  fi
+EOF
 
-echo "Proses deployment skrip selesai."
+echo "Deployment script finished successfully."
