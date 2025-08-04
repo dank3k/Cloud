@@ -1,4 +1,4 @@
-#cloudbuild.yaml
+# cloudbuild.yaml
 steps:
   # Tahap 1: Membangun image Docker
   - name: 'gcr.io/cloud-builders/docker'
@@ -28,4 +28,3 @@ steps:
 # Menambahkan opsi logging untuk mengatasi error service account
 options:
   logging: CLOUD_LOGGING_ONLY
-
