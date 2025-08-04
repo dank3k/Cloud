@@ -28,3 +28,4 @@ steps:
 # Menambahkan opsi logging untuk mengatasi error service account
 options:
   logging: CLOUD_LOGGING_ONLY
+
