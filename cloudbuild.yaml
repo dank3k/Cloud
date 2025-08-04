@@ -24,3 +24,7 @@ steps:
       - '--region=${_REGION}'
       - '--platform=managed'
       - '--allow-unauthenticated'
+
+# Menambahkan opsi logging untuk mengatasi error service account
+options:
+  logging: CLOUD_LOGGING_ONLY
