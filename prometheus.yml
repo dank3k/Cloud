@@ -1,20 +1,23 @@
-# prometheus.yml
 global:
-  # Atur interval scraping global ke 15 detik.
-  # Ini adalah frekuensi Prometheus mengambil metrik.
   scrape_interval: 15s
 
 scrape_configs:
-  # Job untuk memantau Prometheus itu sendiri.
-  - job_name: 'prometheus'
-    # Prometheus mengambil metrik dari dirinya sendiri di localhost:9090.
+  # Job untuk memantau Nginx Prometheus Exporter dari aplikasi React Anda.
+  - job_name: 'fullstak-service-exporter'
+    # Gunakan skema HTTPS karena Cloud Run secara default menggunakan HTTPS.
+    scheme: https
+    # Matikan verifikasi SSL karena Cloud Run menggunakan sertifikat SSL dari Google.
+    tls_config:
+      insecure_skip_verify: true
+    # Ganti <URL_LAYANAN_REACT_ANDA> dengan URL yang Anda dapatkan dari `gcloud run services list`.
+    # Prometheus akan mengambil metrik dari URL ini di port 9113, yang Anda ekspos di Dockerfile Anda.
     static_configs:
-      - targets: ['localhost:9090']
-
-  # Job untuk memantau Nginx Prometheus Exporter dari aplikasi React.
-  # Layanan ini akan berjalan di container 'react-nginx-app' yang didefinisikan di docker-compose.yml.
-  - job_name: 'react-nginx-exporter'
-    # Ganti 'react-nginx-app' dengan nama layanan yang Anda gunakan di docker-compose.yml
-    # Prometheus akan mencari container ini dan mengambil metrik dari port 9113.
-    static_configs:
-      - targets: ['react-nginx-app:9113']
+      - targets: ['fullstak-service-452581603489.asia-southeast2.run.app']
+    # Relabeling untuk menambahkan path ke exporter Nginx
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __address__
+        replacement: 'fullstak-service-452581603489.asia-southeast2.run.app:9113'
+      - source_labels: [__address__]
+        target_label: __scheme__
+        replacement: 'http'
