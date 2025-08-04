@@ -20,19 +20,25 @@ COPY . .
 # Hasil build akan disimpan di direktori `build`.
 RUN npm run build
 
-# --- Stage 2: Menjalankan (serve) Aplikasi Menggunakan Nginx ---
-# Menggunakan Nginx yang ringan (alpine) untuk menyajikan file statis dari hasil build.
+# --- Stage 2: Menjalankan (serve) Aplikasi Menggunakan Nginx dan Prometheus Exporter ---
 FROM nginx:alpine
 
-# Menyalin file konfigurasi Nginx kustom.
-# Ini penting untuk menangani routing Single Page Application (SPA).
+# Menambahkan Prometheus Nginx Exporter dari GitHub
+RUN apk add --no-cache curl \
+    && curl -sL https://github.com/nginxinc/nginx-prometheus-exporter/releases/download/v0.11.0/nginx-prometheus-exporter_0.11.0_linux_amd64.tar.gz | tar xz \
+    && mv nginx-prometheus-exporter /usr/local/bin/
+
+# Menyalin konfigurasi Nginx kustom dan skrip startup.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
 # Menyalin hasil build aplikasi dari stage 'builder' ke direktori Nginx.
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Mengarahkan Nginx untuk mendengarkan di port 80 secara default.
+# Mengarahkan Nginx untuk mendengarkan di port 80 dan exporter di port 9113.
 EXPOSE 80
+EXPOSE 9113
 
-# Perintah default untuk memulai Nginx.
-CMD ["nginx", "-g", "daemon off;"]
+# Perintah untuk menjalankan skrip yang memulai Nginx dan Exporter.
+CMD ["/run.sh"]
