@@ -1,13 +1,29 @@
-# docker-compose.yml
 version: '3.8'
 
-# Jaringan kustom untuk memungkinkan semua layanan berkomunikasi satu sama lain
+# Jaringan kustom untuk memungkinkan semua layanan berkomunikasi
 networks:
-  monitoring:
+  monitoring-net:
     driver: bridge
 
 services:
-  # Konfigurasi layanan Prometheus
+  # Layanan pertama: Aplikasi React dan Nginx
+  # Container ini akan dibangun dari Dockerfile yang Anda sediakan.
+  react-nginx-app:
+    build:
+      # Tentukan direktori tempat Dockerfile dan file proyek lainnya berada.
+      context: .
+      dockerfile: Dockerfile
+    container_name: react-nginx-app
+    restart: unless-stopped
+    ports:
+      # Port untuk mengakses aplikasi React melalui Nginx
+      - "80:80"
+      # Port untuk mengakses metrik Prometheus Exporter dari Nginx
+      - "9113:9113"
+    networks:
+      - monitoring-net
+
+  # Layanan kedua: Prometheus Server
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -21,9 +37,9 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
     networks:
-      - monitoring
+      - monitoring-net
 
-  # Konfigurasi layanan Grafana
+  # Layanan ketiga: Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -31,14 +47,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Atur kredensial login default
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      # Volume untuk menyimpan data Grafana secara persisten
       - grafana-data:/var/lib/grafana
     networks:
-      - monitoring
+      - monitoring-net
 
 volumes:
   grafana-data:
